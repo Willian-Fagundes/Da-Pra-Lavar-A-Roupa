@@ -25,6 +25,11 @@ EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
 EMAIL_DESTINO = os.getenv("EMAIL_DESTINO")
 SENHA_EMAIL = os.getenv("SENHA_EMAIL")
 
+print(f"API_KEY: {'OK' if API_KEY else 'VAZIA'}")
+print(f"EMAIL_REMETENTE: {'OK' if EMAIL_REMETENTE else 'VAZIO'}")
+print(f"SENHA_EMAIL: {'OK' if SENHA_EMAIL else 'VAZIA'}")
+
+
 CITY = "Carapicuíba"
 UNITS = "metric"
 
@@ -36,9 +41,6 @@ response = r.get(URL, params={"q": CITY, "appid": API_KEY,
                                   "units": UNITS, "lang": "pt_br"})
 response.raise_for_status()
 
-print(f"API_KEY: {'OK' if API_KEY else 'VAZIA'}")
-print(f"EMAIL_REMETENTE: {'OK' if EMAIL_REMETENTE else 'VAZIO'}")
-print(f"SENHA_EMAIL: {'OK' if SENHA_EMAIL else 'VAZIA'}")
 
 raw = response.json()
 
