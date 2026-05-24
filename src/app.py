@@ -18,7 +18,7 @@ from methods import classificar, score_chuva, score_nuvens, score_temperatura, s
 
 warnings.filterwarnings("ignore")
 
-load_dotenv(override= True)
+load_dotenv(override=False)
 
 API_KEY = os.getenv("API_KEY")
 EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
