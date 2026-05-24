@@ -36,6 +36,10 @@ response = r.get(URL, params={"q": CITY, "appid": API_KEY,
                                   "units": UNITS, "lang": "pt_br"})
 response.raise_for_status()
 
+print(f"API_KEY: {'OK' if API_KEY else 'VAZIA'}")
+print(f"EMAIL_REMETENTE: {'OK' if EMAIL_REMETENTE else 'VAZIO'}")
+print(f"SENHA_EMAIL: {'OK' if SENHA_EMAIL else 'VAZIA'}")
+
 raw = response.json()
 
 df = pd.json_normalize(raw["list"], sep = "_")
