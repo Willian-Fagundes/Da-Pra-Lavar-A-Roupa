@@ -25,6 +25,10 @@ EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
 EMAIL_DESTINO = os.getenv("EMAIL_DESTINO")
 SENHA_EMAIL = os.getenv("SENHA_EMAIL")
 
+for key, value in os.environ.items():
+    if any(x in key for x in ["API", "EMAIL", "SENHA"]):
+        print(f"{key}: {'OK' if value else 'VAZIO'}")
+
 print(f"API_KEY: {'OK' if API_KEY else 'VAZIA'}")
 print(f"EMAIL_REMETENTE: {'OK' if EMAIL_REMETENTE else 'VAZIO'}")
 print(f"SENHA_EMAIL: {'OK' if SENHA_EMAIL else 'VAZIA'}")
