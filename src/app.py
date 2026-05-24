@@ -1,10 +1,17 @@
 import os
 import warnings
+import smtplib
+
 
 import pandas as pd
 import requests as r
 import numpy as np
 import matplotlib.pyplot as plt
+
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from datetime import datetime
 
 from dotenv import load_dotenv
 from methods import classificar, score_chuva, score_nuvens, score_temperatura, score_umidade, score_vento
@@ -14,6 +21,10 @@ warnings.filterwarnings("ignore")
 load_dotenv(override= True)
 
 API_KEY = os.getenv("OPEN_WEATHER_API")
+EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
+EMAIL_DESTINO = os.getenv("EMAIL_DESTINO")
+SENHA_EMAIL = os.getenv("SENHA_EMAIL")
+
 CITY = "Carapicuíba"
 UNITS = "metric"
 
@@ -144,71 +155,85 @@ daily[["classificacao","cor"]] = daily["score_final"].apply(
 cols_show = ["date","score_final","classificacao","prob_chuva_max",
              "chuva_total_mm","umidade_media","temp_media","vento_medio",
              "nuvens_media","descricao"]
+
 print(daily[cols_show])
 
-fig, axes = plt.subplots(3, 1, figsize=(12, 12))
-fig.suptitle(f"🧺 Viabilidade para Lavar Roupa — {CITY}",
-             fontsize=15, fontweight="bold", y=0.98)
 
-datas  = [d.strftime("%a\n%d/%m") for d in daily["date"]]
-scores = daily["score_final"].tolist()
-cores  = daily["cor"].tolist()
+def gerar_resumo_html():
+    cores_html = {
+        "✅ Ótimo":    "#2ecc71",
+        "👍 Bom":      "#27ae60",
+        "😐 Regular":  "#f39c12",
+        "⚠️ Ruim":     "#e67e22",
+        "❌ Péssimo":  "#e74c3c",
+    }
 
-# Gráfico 1: Nota final
-ax1 = axes[0]
-bars = ax1.bar(datas, scores, color=cores, edgecolor="white", linewidth=1.5, width=0.6)
-ax1.set_ylim(0, 10.5)
-ax1.set_ylabel("Nota (0–10)")
-ax1.set_title("Nota de Viabilidade (critério 2 dias de secagem)")
-ax1.axhline(y=6, color="gray", linestyle="--", alpha=0.5, label="Mínimo recomendado")
-ax1.legend()
-for bar, score, clf in zip(bars, scores, daily["classificacao"]):
-    ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.15,
-             f"{score}", ha="center", va="bottom", fontweight="bold", fontsize=11)
-    ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height()/2,
-             clf.split(" ")[0], ha="center", va="center", fontsize=14)
-ax1.set_facecolor("#f8f9fa")
-ax1.grid(axis="y", alpha=0.3)
+    linhas_tabela = ""
+    for _, row in daily.sort_values("date").iterrows():
+        data  = row["date"].strftime("%a %d/%m")
+        cor   = row["cor"]
+        clf   = row["classificacao"]
+        nota  = row["score_final"]
+        chuva = row["prob_chuva_max"]
+        desc  = row["descricao"]
+        pen   = "⚠️ janela ruim" if row["fator_janela"] < 0.5 else ""
 
-# Gráfico 2: Fatores individuais
-ax2 = axes[1]
-x = np.arange(len(datas))
-w = 0.16
-fatores = {
-    "Sem Chuva":   (daily["s_chuva"]  * 10, "#3498db"),
-    "Umidade":     (daily["s_umid"]   * 10, "#9b59b6"),
-    "Temperatura": (daily["s_temp"]   * 10, "#e74c3c"),
-    "Vento":       (daily["s_vento"]  * 10, "#1abc9c"),
-    "Nuvens":      (daily["s_nuvens"] * 10, "#f39c12"),
-}
-for i, (label, (vals, cor)) in enumerate(fatores.items()):
-    ax2.bar(x + (i - 2) * w, vals, w * 0.9, label=label, color=cor, alpha=0.85)
-ax2.set_xticks(x)
-ax2.set_xticklabels(datas)
-ax2.set_ylim(0, 11)
-ax2.set_ylabel("Sub-nota (0–10)")
-ax2.set_title("Decomposição por Fator")
-ax2.legend(ncol=5, fontsize=9)
-ax2.set_facecolor("#f8f9fa")
-ax2.grid(axis="y", alpha=0.3)
+        linhas_tabela += f"""
+        <tr>
+            <td>{data}</td>
+            <td style="color:{cor}; font-weight:bold">{clf}</td>
+            <td style="font-weight:bold">{nota:.1f}</td>
+            <td>{chuva:.0%}</td>
+            <td>{desc} {pen}</td>
+        </tr>"""
 
-# Gráfico 3: Chuva
-ax3  = axes[2]
-ax3b = ax3.twinx()
-ax3.bar(datas, daily["prob_chuva_max"] * 100, color="#3498db",
-        alpha=0.6, width=0.5, label="Prob. chuva (%)")
-ax3b.plot(datas, daily["chuva_total_mm"], color="#1a5276",
-          marker="o", linewidth=2, label="Chuva acum. (mm)")
-ax3.set_ylabel("Probabilidade (%)", color="#3498db")
-ax3b.set_ylabel("Chuva Acumulada (mm)", color="#1a5276")
-ax3.set_ylim(0, 110)
-ax3.set_title("Risco de Chuva por Dia")
-ax3.set_facecolor("#f8f9fa")
-ax3.grid(axis="y", alpha=0.3)
-lines1, labels1 = ax3.get_legend_handles_labels()
-lines2, labels2 = ax3b.get_legend_handles_labels()
-ax3.legend(lines1 + lines2, labels1 + labels2, fontsize=9)
+    melhor = daily.loc[daily["score_final"].idxmax()]
+    alerta = ""
+    if daily["score_final"].max() < 6:
+        alerta = "<p>⚠️ <b>Nenhum dia ótimo esta semana</b> — considere aguardar nova previsão.</p>"
 
-plt.tight_layout(rect=[0, 0, 1, 0.97])
-plt.savefig("dapralavar.png", bbox_inches="tight", dpi=150)
-plt.show()
+    return f"""
+    <html><body style="font-family:Arial,sans-serif; max-width:600px; margin:auto">
+        <h2>Da pra lavar a roupa ? — {CITY}</h2>
+        <p style="color:gray">{datetime.today().strftime('%d/%m/%Y às %H:%M')}</p>
+
+        <table border="1" cellpadding="8" cellspacing="0"
+               style="border-collapse:collapse; width:100%">
+            <thead style="background:#f0f0f0">
+                <tr>
+                    <th>Data</th>
+                    <th>Classificação</th>
+                    <th>Nota</th>
+                    <th>Chuva</th>
+                    <th>Condição</th>
+                </tr>
+            </thead>
+            <tbody>{linhas_tabela}</tbody>
+        </table>
+
+        <p>🏆 <b>Melhor dia:</b> {melhor["date"].strftime("%A, %d/%m")}
+           (nota {melhor["score_final"]:.1f} — {melhor["classificacao"]})</p>
+
+        {alerta}
+
+        <p style="color:gray; font-size:12px">Gráfico detalhado em anexo.</p>
+    </body></html>
+    """
+
+
+def enviar_email():
+    msg = MIMEMultipart("related")
+    msg["Subject"] = f"REsumo da semana - {CITY} — {datetime.today().strftime('%d/%m')}"
+    msg["From"]    = EMAIL_REMETENTE
+    msg["To"]      = EMAIL_DESTINO
+
+    # Corpo HTML
+    msg.attach(MIMEText(gerar_resumo_html(), "html", "utf-8"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(EMAIL_REMETENTE, SENHA_EMAIL)
+        smtp.send_message(msg)
+
+    print(f"E-mail enviado para {EMAIL_DESTINO}")
+
+enviar_email()
