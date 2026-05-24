@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore")
 
 load_dotenv(override= True)
 
-API_KEY = os.getenv("OPEN_WEATHER_API")
+API_KEY = os.getenv("API_KEY")
 EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
 EMAIL_DESTINO = os.getenv("EMAIL_DESTINO")
 SENHA_EMAIL = os.getenv("SENHA_EMAIL")
