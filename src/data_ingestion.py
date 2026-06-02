@@ -27,7 +27,6 @@ response = r.get(URL, params={"q": CITY, "appid": API_KEY,
                                   "units": UNITS, "lang": "pt_br"})
 response.raise_for_status()
 
-
 raw = response.json()
 
 df = pd.json_normalize(raw["list"], sep = "_")
@@ -68,15 +67,26 @@ VARIAVEIS = {
 }
 
 corr_target = "prob_chuva"
+
 corr_vars   = ["humidity", "temp", "wind_speed", "clouds_pct"]
 
-corr_series = df[corr_vars + [corr_target]].corr()[corr_target].drop(corr_target)
+corr_matrix = df[corr_vars + [corr_target]].corr()
+print(corr_matrix)
+corr_series = corr_matrix[corr_target].drop(corr_target)
+print(corr_series)
+if corr_series.isna().all():
+    PESOS_CORR = {
+        "prob_chuva": 0.40,
+        "humidity": 0.15,
+        "temp": 0.20,
+        "wind_speed": 0.15,
+        "clouds_pct": 0.10,
+    }
+else:
+    pesos_brutos = corr_series.abs()
+    pesos_brutos["prob_chuva"] = pesos_brutos.mean() * 2
+    PESOS_CORR = (pesos_brutos / pesos_brutos.sum()).to_dict()
 
-pesos_brutos = corr_series.abs()
-
-pesos_brutos["prob_chuva"] = pesos_brutos.mean() * 2
-
-PESOS_CORR = (pesos_brutos / pesos_brutos.sum()).to_dict()
 
 PESOS = {
     "chuva":       PESOS_CORR["prob_chuva"],
@@ -93,11 +103,11 @@ daily["s_vento"]  = daily["vento_medio"].apply(score_vento)
 daily["s_nuvens"] = daily["nuvens_media"].apply(score_nuvens)
 
 daily["score_base"] = (
-    PESOS["chuva"]       * daily["s_chuva"]  +
-    PESOS["umidade"]     * daily["s_umid"]   +
-    PESOS["temperatura"] * daily["s_temp"]   +
-    PESOS["vento"]       * daily["s_vento"]  +
-    PESOS["nuvens"]      * daily["s_nuvens"]
+    (PESOS["chuva"]       * daily["s_chuva"])  +
+    (PESOS["umidade"]     * daily["s_umid"])   +
+    (PESOS["temperatura"] * daily["s_temp"])   +
+    (PESOS["vento"]       * daily["s_vento"])  +
+    (PESOS["nuvens"]      * daily["s_nuvens"])
 ) * 10
 
 # Penalizador de janela (2 dias seguintes)
@@ -112,6 +122,7 @@ for i in range(len(daily)):
     penalidades.append(score_chuva(pior_prob, pior_mm))
 
 daily["fator_janela"] = penalidades
+
 daily["score_final"]  = (0.60 * daily["score_base"] +
                          0.40 * daily["score_base"] * daily["fator_janela"])
 daily["score_final"]  = daily["score_final"].clip(0, 10).round(1)
@@ -123,6 +134,6 @@ daily[["classificacao","cor"]] = daily["score_final"].apply(
 cols_show = ["date","score_final","classificacao","prob_chuva_max",
              "chuva_total_mm","umidade_media","temp_media","vento_medio",
              "nuvens_media","descricao"]
-
+print(daily)
 daily.to_csv("dados.csv", index = False)
 

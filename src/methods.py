@@ -58,6 +58,7 @@ def gerar_resumo_html(city):
         "❌ Péssimo":  "#e74c3c",
     }
     daily = pd.read_csv("dados.csv", parse_dates=["date"])
+    print(daily)
     linhas_tabela = ""
     for _, row in daily.sort_values("date").iterrows():
         data  = row["date"].strftime("%a %d/%m")
