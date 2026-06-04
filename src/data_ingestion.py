@@ -8,7 +8,7 @@ import requests as r
 
 
 from dotenv import load_dotenv
-from utils import classificar, score_chuva, score_nuvens, score_temperatura, score_umidade, score_vento, agg_dia
+from src.utils import classificar, score_chuva, score_nuvens, score_temperatura, score_umidade, score_vento, agg_dia
 
 warnings.filterwarnings("ignore")
 

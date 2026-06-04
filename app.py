@@ -1,4 +1,4 @@
-from utils import resumo_streamlit, tratar_cep
+from src.utils import resumo_streamlit, tratar_cep
 import streamlit as st
 
 st.title("Da pra lavar a roupa ?", text_alignment="center")
