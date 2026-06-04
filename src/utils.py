@@ -1,8 +1,36 @@
+import re
 import numpy as np
 import pandas as pd
 from datetime import datetime
+import requests as r
+import streamlit as st
+    
 
+def tratar_cep(cep):
+    apenas_digitos = re.sub(r"\D", "", str(cep))
 
+    if len(apenas_digitos) != 8:
+        raise ValueError("CEP inválido! Deve conter exatamente 8 números.")
+
+    url = f"https://viacep.com.br/ws/{apenas_digitos}/json/"
+    try:
+        response = r.get(url, timeout=5)
+        response.raise_for_status()  # Lança erro se o status_code não for 2xx
+    except r.RequestException as e:
+        raise ValueError(f"Erro de conexão ao consultar o CEP: {e}")
+
+    data = response.json()
+    if data.get("erro") in (True, "true"):
+        raise ValueError("CEP não é valido.")
+
+    cidade = data.get("localidade")
+    uf = data.get("uf")
+
+    if not cidade or not uf:
+        raise ValueError("Dados do CEP incompletos na base de dados.")
+
+    return cidade, uf
+    
 
 def agg_dia(g):
     diurno = g[g["hour"].between(6, 20)]  # período útil de secagem
@@ -50,6 +78,7 @@ def classificar(s):
 
 
 def gerar_resumo_html(city):
+    from data_ingestion import ingest_weather_data
     cores_html = {
         "✅ Ótimo":    "#2ecc71",
         "👍 Bom":      "#27ae60",
@@ -57,8 +86,7 @@ def gerar_resumo_html(city):
         "⚠️ Ruim":     "#e67e22",
         "❌ Péssimo":  "#e74c3c",
     }
-    daily = pd.read_csv("dados.csv", parse_dates=["date"])
-    print(daily)
+    daily = ingest_weather_data()
     linhas_tabela = ""
     for _, row in daily.sort_values("date").iterrows():
         data  = row["date"].strftime("%a %d/%m")
@@ -110,5 +138,34 @@ def gerar_resumo_html(city):
         <p style="color:gray; font-size:12px">Gráfico detalhado em anexo.</p>
     </body></html>
     """
+
+def resumo_streamlit(city, uf):
+    from data_ingestion import ingest_weather_data
+    daily = ingest_weather_data(city, uf)
+
+    st.markdown(f"### Dá pra lavar a roupa? — {city}")
+    st.markdown(f"*{datetime.today().strftime('%d/%m/%Y às %H:%M')}*")
+    st.markdown("---")
+
+    table_data = []
+    for _, row in daily.sort_values("date").iterrows():
+        pen = "⚠️ janela ruim" if row["fator_janela"] < 0.5 else ""
+        table_data.append({
+            "Data": row["date"].strftime("%a %d/%m"),
+            "Classificação": row["classificacao"],
+            "Nota": f"{row['score_final']:.1f}",
+            "Chuva": f"{row['prob_chuva_max']:.0%}",
+            "Condição": f"{row['descricao']} {pen}"
+        })
+
+    st.table(pd.DataFrame(table_data))
+
+    melhor = daily.loc[daily["score_final"].idxmax()]
+
+    st.markdown(f"**Melhor dia:** {melhor['date'].strftime('%A, %d/%m')}")
+    st.markdown(f"(Nota: {melhor['score_final']:.1f} — {melhor['classificacao']})")
+
+    if daily["score_final"].max() < 6:
+        st.warning("⚠️ Nenhum dia ótimo esta semana — considere aguardar nova previsão.")
 
 

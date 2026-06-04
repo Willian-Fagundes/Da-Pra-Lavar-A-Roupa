@@ -2,3 +2,5 @@ requests
 dotenv
 pandas
 matplotlib
+flask
+streamlit
