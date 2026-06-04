@@ -78,7 +78,7 @@ def classificar(s):
 
 
 def gerar_resumo_html(city):
-    from data_ingestion import ingest_weather_data
+    from src.data_ingestion import ingest_weather_data
     cores_html = {
         "✅ Ótimo":    "#2ecc71",
         "👍 Bom":      "#27ae60",
@@ -140,7 +140,7 @@ def gerar_resumo_html(city):
     """
 
 def resumo_streamlit(city, uf):
-    from data_ingestion import ingest_weather_data
+    from src.data_ingestion import ingest_weather_data
     daily = ingest_weather_data(city, uf)
 
     st.markdown(f"### Dá pra lavar a roupa? — {city}")
