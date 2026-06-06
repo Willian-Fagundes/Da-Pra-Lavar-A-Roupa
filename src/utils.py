@@ -15,7 +15,7 @@ def tratar_cep(cep):
     url = f"https://viacep.com.br/ws/{apenas_digitos}/json/"
     try:
         response = r.get(url, timeout=5)
-        response.raise_for_status()  # Lança erro se o status_code não for 2xx
+        response.raise_for_status() 
     except r.RequestException as e:
         raise ValueError(f"Erro de conexão ao consultar o CEP: {e}")
 
@@ -23,13 +23,15 @@ def tratar_cep(cep):
     if data.get("erro") in (True, "true"):
         raise ValueError("CEP não é valido.")
 
-    cidade = data.get("localidade")
     uf = data.get("uf")
+    cidade = data.get("localidade")
+    bairro = data.get("bairro")
+    
 
-    if not cidade or not uf:
+    if not cidade or not uf or not bairro:
         raise ValueError("Dados do CEP incompletos na base de dados.")
 
-    return cidade, uf
+    return bairro, cidade, uf
     
 
 def agg_dia(g):
@@ -139,11 +141,15 @@ def gerar_resumo_html(city):
     </body></html>
     """
 
-def resumo_streamlit(city, uf):
-    from src.data_ingestion import ingest_weather_data
-    daily = ingest_weather_data(city, uf)
+def resumo_streamlit(bairro, cidade, uf):
 
-    st.markdown(f"### Dá pra lavar a roupa? — {city}")
+    from src.data_ingestion import ingest_weather_data, get_lat_lon
+
+    lat, lon = get_lat_lon(bairro, uf)
+
+    daily = ingest_weather_data(lat, lon)
+
+    st.markdown(f"### Dá pra lavar a roupa?\n***{bairro} - {cidade} - {uf}***")
     st.markdown(f"*{datetime.today().strftime('%d/%m/%Y às %H:%M')}*")
     st.markdown("---")
 

@@ -1,26 +1,30 @@
 import os
 import warnings
-from datetime import datetime
-
-
 import pandas as pd
 import requests as r
 
-
 from dotenv import load_dotenv
+from geopy.geocoders import Nominatim
+from datetime import datetime
 from src.utils import classificar, score_chuva, score_nuvens, score_temperatura, score_umidade, score_vento, agg_dia
 
 warnings.filterwarnings("ignore")
 
 load_dotenv(override=False)
 
-def ingest_weather_data(city, uf):
+def get_lat_lon(bairro, uf):
+    geolocator = Nominatim(user_agent="my_app")
+    local = geolocator.geocode(f"{bairro},{uf}, Brasil")
+    lon, lat = local.longitude, local.latitude
+    return lat, lon
+
+def ingest_weather_data(latitude, longitude):
     API_KEY = os.getenv("API_KEY")
     URL = "https://api.openweathermap.org/data/2.5/forecast"
     UNITS = "metric"
     DIAS_SECAGEM = 2
 
-    response = r.get(URL, params={"q": f"{city},{uf}, BR", "appid": API_KEY, "units": UNITS, "lang": "pt_br"})
+    response = r.get(URL, params={"lat": {latitude}, "lon" : {longitude}, "appid": API_KEY, "units": UNITS, "lang": "pt_br"})
     response.raise_for_status()
     raw = response.json()
 

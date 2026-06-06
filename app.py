@@ -18,9 +18,8 @@ if botao_enviar:
         st.warning("Por favor, digite um CEP antes de enviar.")
     else:
         try:
-            cidade, uf = tratar_cep(cep_input)
-            resumo_streamlit(cidade, uf)
+            bairro, cidade, estado = tratar_cep(cep_input)
+            resumo_streamlit( bairro, cidade, estado)
 
         except ValueError as erro:
-            # Retorna a mensagem de erro customizada caso a validação falhe
-            st.error(str(erro))
+              st.error(str(erro))
