@@ -10,7 +10,7 @@ Este é um aplicativo Streamlit que utiliza dados de previsão meteorológica pa
 
 O principal objetivo é solucionar a dúvida recorrente: **"Qual é o melhor dia para lavar a roupa?"**. Através da análise de dados meteorológicos dos próximos 5 dias, o app fornece um ranking dos dias mais adequados para secar roupa ao ar livre, considerando as condições climáticas ideais.
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 - Busca por localização via CEP (formato: 01310-200 ou 01310200)
 - Análise detalhada de condições climáticas para os próximos 5 dias
@@ -28,7 +28,7 @@ O principal objetivo é solucionar a dúvida recorrente: **"Qual é o melhor dia
 
 ## Como Usar
 
-1. Execute a aplicação Streamlit - https://da-pra-lavar-a-roupa.streamlit.app/
+1. Execute a aplicação Streamlit - https://dapralavararoupa.streamlit.app/
 2. Digite seu CEP (código postal brasileiro)
 3. Clique em "Resumo" para ver a análise dos próximos 5 dias
 4. Consulte as recomendações e escolha o melhor dia para lavar suas roupas!
